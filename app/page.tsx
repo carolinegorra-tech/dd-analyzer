@@ -38,6 +38,7 @@ export default function Page() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error?.message || 'API failed');
+      if (!data.content || !data.content[0]) throw new Error('Empty API response: ' + JSON.stringify(data));
       const analysisText = data.content[0].text;
       const cleanJson = analysisText.replace(/```json|```/g, '').trim();
       const analysis = JSON.parse(cleanJson);
@@ -108,67 +109,38 @@ ${a.findings?.length ? `<h2>Critical Findings — ${a.findings.length} identifie
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'system-ui, sans-serif' }}>
-      {/* Sidebar */}
       <div style={{ width: 260, background: '#141c25', flexShrink: 0, display: 'flex', flexDirection: 'column', padding: '28px 20px' }}>
         <div style={{ marginBottom: 28 }}>
           <div style={{ color: '#ffffff', fontWeight: 700, fontSize: 15, letterSpacing: '-0.01em', marginBottom: 4 }}>Due Diligence</div>
           <div style={{ color: '#5a7a8a', fontSize: 11, fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Document Review</div>
         </div>
-
-        {/* Upload Zone */}
         <div
-          onDrop={handleDrop}
-          onDragOver={(e) => e.preventDefault()}
-          onClick={() => fileInputRef.current?.click()}
-          style={{ border: '1.5px dashed #2a3f52', borderRadius: 8, padding: '20px 12px', textAlign: 'center', cursor: 'pointer', marginBottom: 20, transition: 'border-color 0.15s' }}
-          onMouseEnter={e => e.currentTarget.style.borderColor = '#d65b52'}
-          onMouseLeave={e => e.currentTarget.style.borderColor = '#2a3f52'}
+          onDrop={handleDrop} onDragOver={(e) => e.preventDefault()} onClick={() => fileInputRef.current?.click()}
+          style={{ border: '1.5px dashed #2a3f52', borderRadius: 8, padding: '20px 12px', textAlign: 'center', cursor: 'pointer', marginBottom: 20 }}
         >
           <input ref={fileInputRef} type="file" multiple onChange={handleFileSelect} style={{ display: 'none' }} accept=".pdf,.docx,.doc,.xlsx,.xls,.txt" />
           <div style={{ color: '#4a6a7a', fontSize: 22, marginBottom: 6 }}>↑</div>
           <div style={{ color: '#8aabb8', fontSize: 12, fontWeight: 500 }}>Upload documents</div>
           <div style={{ color: '#4a6a7a', fontSize: 11, marginTop: 3 }}>PDF · DOCX · XLSX</div>
         </div>
-
-        {/* Document List */}
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {documents.length === 0 ? (
             <div style={{ color: '#3a5566', fontSize: 12, textAlign: 'center', paddingTop: 12 }}>No documents filed</div>
-          ) : (
-            documents.map(doc => (
-              <div
-                key={doc.id}
-                onClick={() => setSelectedDoc(doc.id)}
-                style={{
-                  padding: '10px 12px', borderRadius: 6, cursor: 'pointer', marginBottom: 4, position: 'relative',
-                  background: selectedDoc === doc.id ? '#1e2f3f' : 'transparent',
-                  border: selectedDoc === doc.id ? '1px solid #2e4a5e' : '1px solid transparent',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingRight: 18 }}>
-                  <div style={{
-                    width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-                    background: doc.status === 'done' ? '#2ecc8a' : doc.status === 'error' ? '#e05a50' : '#f0a030',
-                    boxShadow: doc.status === 'analyzing' ? '0 0 0 3px rgba(240,160,48,0.2)' : 'none'
-                  }} />
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ color: '#d0e0ea', fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.name}</div>
-                    <div style={{ color: '#4a6a7a', fontSize: 10, fontFamily: 'monospace', marginTop: 2 }}>{doc.date}</div>
-                  </div>
+          ) : documents.map(doc => (
+            <div key={doc.id} onClick={() => setSelectedDoc(doc.id)} style={{ padding: '10px 12px', borderRadius: 6, cursor: 'pointer', marginBottom: 4, position: 'relative', background: selectedDoc === doc.id ? '#1e2f3f' : 'transparent', border: selectedDoc === doc.id ? '1px solid #2e4a5e' : '1px solid transparent' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingRight: 18 }}>
+                <div style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: doc.status === 'done' ? '#2ecc8a' : doc.status === 'error' ? '#e05a50' : '#f0a030' }} />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ color: '#d0e0ea', fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.name}</div>
+                  <div style={{ color: '#4a6a7a', fontSize: 10, fontFamily: 'monospace', marginTop: 2 }}>{doc.date}</div>
                 </div>
-                <button
-                  onClick={(e) => removeDocument(doc.id, e)}
-                  style={{ position: 'absolute', top: 8, right: 8, background: 'none', border: 'none', color: '#3a5566', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 2 }}
-                  onMouseEnter={e => e.currentTarget.style.color = '#e05a50'}
-                  onMouseLeave={e => e.currentTarget.style.color = '#3a5566'}
-                >×</button>
               </div>
-            ))
-          )}
+              <button onClick={(e) => removeDocument(doc.id, e)} style={{ position: 'absolute', top: 8, right: 8, background: 'none', border: 'none', color: '#3a5566', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 2 }}>×</button>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Main Panel */}
       <div style={{ flex: 1, background: '#f7f5f0', overflowY: 'auto' }}>
         {!selectedDoc ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', color: '#999', gap: 12 }}>
@@ -184,113 +156,83 @@ ${a.findings?.length ? `<h2>Critical Findings — ${a.findings.length} identifie
           </div>
         ) : currentAnalysis ? (
           <div style={{ maxWidth: 860, margin: '0 auto', padding: '40px 48px' }}>
-            {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32, paddingBottom: 24, borderBottom: '1px solid #e0ddd6' }}>
               <div>
                 <div style={{ fontSize: 11, fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#999', marginBottom: 6 }}>{currentAnalysis.documentType}</div>
                 <h1 style={{ fontSize: 22, fontWeight: 600, color: '#1a1a1a', margin: 0, lineHeight: 1.3 }}>{documents.find(d => d.id === selectedDoc)?.name}</h1>
                 <div style={{ display: 'flex', gap: 16, marginTop: 10, alignItems: 'center' }}>
                   <span style={{ fontSize: 12, fontFamily: 'monospace', color: '#999' }}>Confidence:</span>
-                  <span style={{ fontSize: 11, fontFamily: 'monospace', fontWeight: 700, padding: '2px 8px', borderRadius: 3,
-                    background: currentAnalysis.confidence === 'high' ? '#e6f4ec' : currentAnalysis.confidence === 'medium' ? '#fef0e6' : '#fdecea',
-                    color: currentAnalysis.confidence === 'high' ? '#1a7a40' : currentAnalysis.confidence === 'medium' ? '#b7770d' : '#c0392b'
-                  }}>{(currentAnalysis.confidence || '').toUpperCase()}</span>
+                  <span style={{ fontSize: 11, fontFamily: 'monospace', fontWeight: 700, padding: '2px 8px', borderRadius: 3, background: currentAnalysis.confidence === 'high' ? '#e6f4ec' : currentAnalysis.confidence === 'medium' ? '#fef0e6' : '#fdecea', color: currentAnalysis.confidence === 'high' ? '#1a7a40' : currentAnalysis.confidence === 'medium' ? '#b7770d' : '#c0392b' }}>{(currentAnalysis.confidence || '').toUpperCase()}</span>
                 </div>
               </div>
-              <button
-                onClick={exportReport}
-                style={{ background: '#141c25', color: '#fff', border: 'none', borderRadius: 6, padding: '10px 18px', fontSize: 13, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}
-                onMouseEnter={e => e.currentTarget.style.background = '#c0392b'}
-                onMouseLeave={e => e.currentTarget.style.background = '#141c25'}
-              >↓ Export PDF</button>
+              <button onClick={exportReport} style={{ background: '#141c25', color: '#fff', border: 'none', borderRadius: 6, padding: '10px 18px', fontSize: 13, fontWeight: 500, cursor: 'pointer', flexShrink: 0 }}>↓ Export PDF</button>
             </div>
 
-            {/* Search */}
             <div style={{ marginBottom: 28 }}>
-              <input
-                type="text" placeholder="Search findings…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-                style={{ width: '100%', padding: '10px 14px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, background: '#fff', color: '#1a1a1a', boxSizing: 'border-box' }}
-              />
+              <input type="text" placeholder="Search findings…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '10px 14px', border: '1px solid #ddd', borderRadius: 6, fontSize: 14, background: '#fff', color: '#1a1a1a', boxSizing: 'border-box' }} />
             </div>
 
-            {/* Executive Summary */}
             <div style={{ marginBottom: 32 }}>
               <div style={{ fontSize: 11, fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#999', marginBottom: 12 }}>Executive Summary</div>
-              <div style={{ fontSize: 16, lineHeight: 1.7, color: '#2a2520', fontFamily: 'Georgia, serif', padding: '18px 20px', background: '#fff', borderLeft: '3px solid #141c25', borderRadius: '0 6px 6px 0' }}>
-                {currentAnalysis.executiveSummary}
-              </div>
+              <div style={{ fontSize: 16, lineHeight: 1.7, color: '#2a2520', fontFamily: 'Georgia, serif', padding: '18px 20px', background: '#fff', borderLeft: '3px solid #141c25', borderRadius: '0 6px 6px 0' }}>{currentAnalysis.executiveSummary}</div>
             </div>
 
-            {/* Risks */}
             {risks.length > 0 && (
               <div style={{ marginBottom: 32 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                   <div style={{ fontSize: 11, fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#999' }}>Key Risks</div>
                   <div style={{ fontSize: 11, fontFamily: 'monospace', background: '#f0ece4', color: '#888', padding: '1px 8px', borderRadius: 10 }}>{risks.length}</div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {risks.map((risk, i) => (
-                    <div key={i} style={{ background: '#fff', borderRadius: 8, padding: '16px 18px', borderLeft: `3px solid ${sevColor(risk.severity)}` }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                        <div style={{ fontWeight: 600, fontSize: 14, color: '#1a1a1a' }}>{risk.title}</div>
-                        <span style={{ fontSize: 10, fontFamily: 'monospace', fontWeight: 700, padding: '2px 8px', borderRadius: 3, background: sevBg(risk.severity), color: sevColor(risk.severity), flexShrink: 0, marginLeft: 12 }}>{(risk.severity||'').toUpperCase()}</span>
-                      </div>
-                      <div style={{ fontSize: 14, color: '#444', lineHeight: 1.6, marginBottom: 8 }}>{risk.description}</div>
-                      <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#aaa', fontStyle: 'italic' }}>§ {risk.citation}</div>
+                {risks.map((risk, i) => (
+                  <div key={i} style={{ background: '#fff', borderRadius: 8, padding: '16px 18px', borderLeft: `3px solid ${sevColor(risk.severity)}`, marginBottom: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: '#1a1a1a' }}>{risk.title}</div>
+                      <span style={{ fontSize: 10, fontFamily: 'monospace', fontWeight: 700, padding: '2px 8px', borderRadius: 3, background: sevBg(risk.severity), color: sevColor(risk.severity), flexShrink: 0, marginLeft: 12 }}>{(risk.severity||'').toUpperCase()}</span>
                     </div>
-                  ))}
-                </div>
+                    <div style={{ fontSize: 14, color: '#444', lineHeight: 1.6, marginBottom: 8 }}>{risk.description}</div>
+                    <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#aaa', fontStyle: 'italic' }}>§ {risk.citation}</div>
+                  </div>
+                ))}
               </div>
             )}
 
-            {/* Red Flags */}
             {flags.length > 0 && (
               <div style={{ marginBottom: 32 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                   <div style={{ fontSize: 11, fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#999' }}>Red Flags</div>
                   <div style={{ fontSize: 11, fontFamily: 'monospace', background: '#f0ece4', color: '#888', padding: '1px 8px', borderRadius: 10 }}>{flags.length}</div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {flags.map((flag, i) => (
-                    <div key={i} style={{ background: '#fff', borderRadius: 8, padding: '16px 18px', borderLeft: '3px solid #c0392b' }}>
-                      <div style={{ fontWeight: 600, fontSize: 14, color: '#1a1a1a', marginBottom: 8 }}>{flag.title}</div>
-                      <div style={{ fontSize: 14, color: '#444', lineHeight: 1.6, marginBottom: 6 }}>{flag.description}</div>
-                      <div style={{ fontSize: 14, color: '#444', lineHeight: 1.6, marginBottom: 8 }}><span style={{ fontWeight: 600 }}>Implication:</span> {flag.implication}</div>
-                      <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#aaa', fontStyle: 'italic' }}>§ {flag.citation}</div>
-                    </div>
-                  ))}
-                </div>
+                {flags.map((flag, i) => (
+                  <div key={i} style={{ background: '#fff', borderRadius: 8, padding: '16px 18px', borderLeft: '3px solid #c0392b', marginBottom: 12 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: '#1a1a1a', marginBottom: 8 }}>{flag.title}</div>
+                    <div style={{ fontSize: 14, color: '#444', lineHeight: 1.6, marginBottom: 6 }}>{flag.description}</div>
+                    <div style={{ fontSize: 14, color: '#444', lineHeight: 1.6, marginBottom: 8 }}><span style={{ fontWeight: 600 }}>Implication:</span> {flag.implication}</div>
+                    <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#aaa', fontStyle: 'italic' }}>§ {flag.citation}</div>
+                  </div>
+                ))}
               </div>
             )}
 
-            {/* Critical Findings */}
             {currentAnalysis.findings?.length > 0 && (
               <div style={{ marginBottom: 32 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                   <div style={{ fontSize: 11, fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#999' }}>Critical Findings</div>
                   <div style={{ fontSize: 11, fontFamily: 'monospace', background: '#f0ece4', color: '#888', padding: '1px 8px', borderRadius: 10 }}>{currentAnalysis.findings.length}</div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {currentAnalysis.findings.map((f, i) => (
-                    <div key={i} style={{ background: '#fff', borderRadius: 8, padding: '16px 18px', borderLeft: '3px solid #b7770d' }}>
-                      <div style={{ fontWeight: 600, fontSize: 14, color: '#1a1a1a', marginBottom: 8 }}>{f.title}</div>
-                      <div style={{ fontSize: 14, color: '#444', lineHeight: 1.6, marginBottom: 6 }}><span style={{ fontWeight: 600 }}>Impact:</span> {f.impact}</div>
-                      <div style={{ fontSize: 14, color: '#444', lineHeight: 1.6 }}><span style={{ fontWeight: 600 }}>Action:</span> {f.recommendation}</div>
-                    </div>
-                  ))}
-                </div>
+                {currentAnalysis.findings.map((f, i) => (
+                  <div key={i} style={{ background: '#fff', borderRadius: 8, padding: '16px 18px', borderLeft: '3px solid #b7770d', marginBottom: 12 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: '#1a1a1a', marginBottom: 8 }}>{f.title}</div>
+                    <div style={{ fontSize: 14, color: '#444', lineHeight: 1.6, marginBottom: 6 }}><span style={{ fontWeight: 600 }}>Impact:</span> {f.impact}</div>
+                    <div style={{ fontSize: 14, color: '#444', lineHeight: 1.6 }}><span style={{ fontWeight: 600 }}>Action:</span> {f.recommendation}</div>
+                  </div>
+                ))}
               </div>
             )}
 
-            {/* Deal Impact */}
             <div>
               <div style={{ fontSize: 11, fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.1em', color: '#999', marginBottom: 14 }}>Deal Impact Assessment</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, background: '#e0ddd6', borderRadius: 8, overflow: 'hidden' }}>
-                {[
-                  { label: 'Valuation', value: currentAnalysis.dealImpact?.valuation },
-                  { label: 'Timeline', value: currentAnalysis.dealImpact?.timeline },
-                  { label: 'Required Conditions', value: currentAnalysis.dealImpact?.conditions },
-                ].map((cell, i) => (
+                {[{ label: 'Valuation', value: currentAnalysis.dealImpact?.valuation }, { label: 'Timeline', value: currentAnalysis.dealImpact?.timeline }, { label: 'Required Conditions', value: currentAnalysis.dealImpact?.conditions }].map((cell, i) => (
                   <div key={i} style={{ background: '#fff', padding: '18px 20px' }}>
                     <div style={{ fontSize: 10, fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#aaa', marginBottom: 8 }}>{cell.label}</div>
                     <div style={{ fontSize: 14, color: '#2a2520', lineHeight: 1.5 }}>{cell.value}</div>
