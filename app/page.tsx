@@ -42,8 +42,7 @@ export default function Page() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error?.message || 'API failed');
-      if (!data.content || !data.content[0]) throw new Error('mimeType=' + mimeType + ' | API said: ' + JSON.stringify(data));      const analysisText = data.content[0].text;
-      const cleanJson = analysisText.replace(/```json|```/g, '').trim();
+      if (!data.content || !data.content[0]) throw new Error('name=' + file.name + ' ext=' + ext + ' mime=' + mimeType + ' | ' + JSON.stringify(data));      const cleanJson = analysisText.replace(/```json|```/g, '').trim();
       const analysis = JSON.parse(cleanJson);
       setDocuments(prev => prev.map(d => d.id === docId ? { ...d, status: 'done' } : d));
       setFindings(prev => ({ ...prev, [docId]: analysis }));
