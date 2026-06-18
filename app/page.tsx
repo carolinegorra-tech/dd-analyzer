@@ -22,7 +22,11 @@ export default function Page() {
         reader.onerror = () => reject(new Error('Failed to read file'));
         reader.readAsDataURL(file);
       });
-      const mimeType = file.type || 'application/octet-stream';
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      const mimeType = ext === 'pdf' ? 'application/pdf'
+        : ext === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        : ext === 'xlsx' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        : file.type || 'text/plain';
       const systemPrompt = `You are an expert M&A due diligence analyst. Analyze documents and return ONLY valid JSON (no markdown, no code blocks):
 {"documentType":"inferred type","executiveSummary":"2-3 sentence summary","risks":[{"title":"string","severity":"critical|high|medium","description":"string","citation":"section reference"}],"redFlags":[{"title":"string","description":"string","citation":"location","implication":"deal impact"}],"findings":[{"title":"string","impact":"quantified impact","recommendation":"action"}],"dealImpact":{"valuation":"impact","timeline":"effect","conditions":"required"},"confidence":"high|medium|low"}`;
       const response = await fetch('/api/analyze', {
@@ -72,7 +76,7 @@ h1{font-size:26px;border-bottom:2px solid #111;padding-bottom:14px;margin-bottom
 h2{font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#888;margin:32px 0 12px;border-bottom:1px solid #eee;padding-bottom:6px}
 .summary{font-size:16px;background:#f8f8f6;padding:18px;border-left:3px solid #111;margin-bottom:8px}
 .item{border-left:3px solid #c0392b;padding:6px 0 6px 16px;margin-bottom:18px}
-.item.amber{border-left-color:#b7770d}.item.gray{border-left-color:#888}
+.item.amber{border-left-color:#b7770d}
 .title{font-weight:bold;font-size:15px;margin-bottom:4px}
 .badge{display:inline-block;font-size:10px;font-family:monospace;padding:1px 6px;background:#fdecea;color:#c0392b;margin-left:8px;text-transform:uppercase}
 .badge.high{background:#fef0e6;color:#b7770d}.badge.medium{background:#fefce6;color:#7d6b0a}
@@ -80,7 +84,6 @@ h2{font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:
 .grid{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #ddd;margin-top:8px}
 .cell{padding:14px;border-right:1px solid #ddd}.cell:last-child{border-right:none}
 .clabel{font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#999;margin-bottom:4px}
-.cval{font-size:13px}
 @media print{body{margin:24px;padding:0 24px}}
 </style></head><body>
 <h1>Due Diligence Analysis Report</h1>
@@ -90,9 +93,9 @@ ${a.risks?.length ? `<h2>Key Risks — ${a.risks.length} identified</h2>${a.risk
 ${a.redFlags?.length ? `<h2>Red Flags — ${a.redFlags.length} identified</h2>${a.redFlags.map(f=>`<div class="item"><div class="title">${f.title}</div><div class="desc">${f.description}</div><div class="desc"><b>Implication:</b> ${f.implication}</div><div class="cite">§ ${f.citation}</div></div>`).join('')}` : ''}
 ${a.findings?.length ? `<h2>Critical Findings — ${a.findings.length} identified</h2>${a.findings.map(f=>`<div class="item amber"><div class="title">${f.title}</div><div class="desc"><b>Impact:</b> ${f.impact}</div><div class="desc"><b>Action:</b> ${f.recommendation}</div></div>`).join('')}` : ''}
 <h2>Deal Impact Assessment</h2><div class="grid">
-<div class="cell"><div class="clabel">Valuation</div><div class="cval">${a.dealImpact?.valuation}</div></div>
-<div class="cell"><div class="clabel">Timeline</div><div class="cval">${a.dealImpact?.timeline}</div></div>
-<div class="cell"><div class="clabel">Conditions</div><div class="cval">${a.dealImpact?.conditions}</div></div>
+<div class="cell"><div class="clabel">Valuation</div>${a.dealImpact?.valuation}</div>
+<div class="cell"><div class="clabel">Timeline</div>${a.dealImpact?.timeline}</div>
+<div class="cell"><div class="clabel">Conditions</div>${a.dealImpact?.conditions}</div>
 </div></body></html>`;
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
@@ -103,7 +106,6 @@ ${a.findings?.length ? `<h2>Critical Findings — ${a.findings.length} identifie
   const currentAnalysis = selectedDoc ? findings[selectedDoc] : null;
   const risks = currentAnalysis?.risks?.filter(r => !searchTerm || r.title.toLowerCase().includes(searchTerm.toLowerCase()) || r.description.toLowerCase().includes(searchTerm.toLowerCase())) || [];
   const flags = currentAnalysis?.redFlags?.filter(f => !searchTerm || f.title.toLowerCase().includes(searchTerm.toLowerCase()) || f.description.toLowerCase().includes(searchTerm.toLowerCase())) || [];
-
   const sevColor = (s) => s === 'critical' ? '#c0392b' : s === 'high' ? '#b7770d' : '#7d6b0a';
   const sevBg = (s) => s === 'critical' ? '#fdecea' : s === 'high' ? '#fef0e6' : '#fefce6';
 
@@ -111,13 +113,11 @@ ${a.findings?.length ? `<h2>Critical Findings — ${a.findings.length} identifie
     <div style={{ display: 'flex', minHeight: '100vh', fontFamily: 'system-ui, sans-serif' }}>
       <div style={{ width: 260, background: '#141c25', flexShrink: 0, display: 'flex', flexDirection: 'column', padding: '28px 20px' }}>
         <div style={{ marginBottom: 28 }}>
-          <div style={{ color: '#ffffff', fontWeight: 700, fontSize: 15, letterSpacing: '-0.01em', marginBottom: 4 }}>Due Diligence</div>
+          <div style={{ color: '#ffffff', fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Due Diligence</div>
           <div style={{ color: '#5a7a8a', fontSize: 11, fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Document Review</div>
         </div>
-        <div
-          onDrop={handleDrop} onDragOver={(e) => e.preventDefault()} onClick={() => fileInputRef.current?.click()}
-          style={{ border: '1.5px dashed #2a3f52', borderRadius: 8, padding: '20px 12px', textAlign: 'center', cursor: 'pointer', marginBottom: 20 }}
-        >
+        <div onDrop={handleDrop} onDragOver={(e) => e.preventDefault()} onClick={() => fileInputRef.current?.click()}
+          style={{ border: '1.5px dashed #2a3f52', borderRadius: 8, padding: '20px 12px', textAlign: 'center', cursor: 'pointer', marginBottom: 20 }}>
           <input ref={fileInputRef} type="file" multiple onChange={handleFileSelect} style={{ display: 'none' }} accept=".pdf,.docx,.doc,.xlsx,.xls,.txt" />
           <div style={{ color: '#4a6a7a', fontSize: 22, marginBottom: 6 }}>↑</div>
           <div style={{ color: '#8aabb8', fontSize: 12, fontWeight: 500 }}>Upload documents</div>
@@ -143,7 +143,7 @@ ${a.findings?.length ? `<h2>Critical Findings — ${a.findings.length} identifie
 
       <div style={{ flex: 1, background: '#f7f5f0', overflowY: 'auto' }}>
         {!selectedDoc ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', color: '#999', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 12 }}>
             <div style={{ fontSize: 40, opacity: 0.3 }}>⊞</div>
             <div style={{ fontSize: 16, fontWeight: 500, color: '#666' }}>No document selected</div>
             <div style={{ fontSize: 14, color: '#999' }}>Upload a document to begin analysis</div>
