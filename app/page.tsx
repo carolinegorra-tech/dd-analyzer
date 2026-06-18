@@ -87,33 +87,54 @@ export default function Page() {
     if (!selectedDoc || !findings[selectedDoc]) return;
     const doc = documents.find(d => d.id === selectedDoc);
     const analysis = findings[selectedDoc];
-    let report = `DUE DILIGENCE ANALYSIS REPORT\n${'='.repeat(60)}\n\nDocument: ${doc.name}\nDate: ${new Date().toLocaleDateString()}\nType: ${analysis.documentType}\nConfidence: ${analysis.confidence.toUpperCase()}\n\n`;
-    report += `EXECUTIVE SUMMARY\n${'-'.repeat(40)}\n${analysis.executiveSummary}\n\n`;
-    if (analysis.risks?.length) {
-      report += `KEY RISKS\n${'-'.repeat(40)}\n`;
-      analysis.risks.forEach((r, i) => {
-        report += `${i + 1}. [${r.severity.toUpperCase()}] ${r.title}\n${r.description}\nCitation: ${r.citation}\n\n`;
-      });
-    }
-    if (analysis.redFlags?.length) {
-      report += `RED FLAGS\n${'-'.repeat(40)}\n`;
-      analysis.redFlags.forEach((f, i) => {
-        report += `${i + 1}. ${f.title}\n${f.description}\nImplication: ${f.implication}\nLocation: ${f.citation}\n\n`;
-      });
-    }
-    if (analysis.findings?.length) {
-      report += `CRITICAL FINDINGS\n${'-'.repeat(40)}\n`;
-      analysis.findings.forEach((f, i) => {
-        report += `${i + 1}. ${f.title}\nImpact: ${f.impact}\nAction: ${f.recommendation}\n\n`;
-      });
-    }
-    report += `DEAL IMPACT\n${'-'.repeat(40)}\nValuation: ${analysis.dealImpact?.valuation}\nTimeline: ${analysis.dealImpact?.timeline}\nConditions: ${analysis.dealImpact?.conditions}\n`;
-    const blob = new Blob([report], { type: 'text/plain' });
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>DD Report - ${doc.name}</title>
+<style>
+  body { font-family: Georgia, serif; max-width: 800px; margin: 40px auto; padding: 0 40px; color: #1a1a1a; }
+  h1 { font-size: 24px; border-bottom: 2px solid #1a1a1a; padding-bottom: 12px; }
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.08em; color: #666; margin-top: 32px; }
+  .meta { font-family: monospace; font-size: 12px; color: #666; margin-bottom: 24px; }
+  .summary { font-size: 16px; line-height: 1.6; background: #f9f9f9; padding: 16px; border-left: 3px solid #1a1a1a; }
+  .item { border-left: 3px solid #b3261e; padding: 8px 0 8px 16px; margin-bottom: 16px; }
+  .item.amber { border-left-color: #92580a; }
+  .item-title { font-weight: bold; font-size: 15px; }
+  .badge { display: inline-block; font-size: 10px; padding: 2px 6px; background: #fbeae8; color: #b3261e; font-family: monospace; text-transform: uppercase; margin-left: 8px; }
+  .cite { font-size: 12px; color: #888; font-style: italic; margin-top: 4px; }
+  .impact-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: #ddd; margin-top: 8px; }
+  .impact-cell { background: white; padding: 12px; }
+  .impact-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #666; margin-bottom: 4px; font-family: monospace; }
+  @media print { body { margin: 20px; } }
+</style>
+</head>
+<body>
+<h1>Due Diligence Analysis Report</h1>
+<div class="meta">
+  Document: ${doc.name}<br>
+  Date: ${new Date().toLocaleDateString()}<br>
+  Type: ${analysis.documentType}<br>
+  Confidence: ${(analysis.confidence || '').toUpperCase()}
+</div>
+<h2>Executive Summary</h2>
+<div class="summary">${analysis.executiveSummary}</div>
+${analysis.risks?.length ? `<h2>Key Risks (${analysis.risks.length})</h2>${analysis.risks.map(r => `<div class="item"><div class="item-title">${r.title} <span class="badge">${r.severity}</span></div><div>${r.description}</div><div class="cite">Citation: ${r.citation}</div></div>`).join('')}` : ''}
+${analysis.redFlags?.length ? `<h2>Red Flags (${analysis.redFlags.length})</h2>${analysis.redFlags.map(f => `<div class="item"><div class="item-title">${f.title}</div><div>${f.description}</div><div><strong>Implication:</strong> ${f.implication}</div><div class="cite">Location: ${f.citation}</div></div>`).join('')}` : ''}
+${analysis.findings?.length ? `<h2>Critical Findings (${analysis.findings.length})</h2>${analysis.findings.map(f => `<div class="item amber"><div class="item-title">${f.title}</div><div><strong>Impact:</strong> ${f.impact}</div><div><strong>Action:</strong> ${f.recommendation}</div></div>`).join('')}` : ''}
+<h2>Deal Impact Assessment</h2>
+<div class="impact-grid">
+  <div class="impact-cell"><div class="impact-label">Valuation</div>${analysis.dealImpact?.valuation}</div>
+  <div class="impact-cell"><div class="impact-label">Timeline</div>${analysis.dealImpact?.timeline}</div>
+  <div class="impact-cell"><div class="impact-label">Conditions</div>${analysis.dealImpact?.conditions}</div>
+</div>
+</body></html>`;
+
+    const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `DD-Report-${doc.name.replace(/\.[^/.]+$/, '')}.txt`;
-    a.click();
+    const win = window.open(url, '_blank');
+    setTimeout(() => { win?.print(); }, 500);
   };
 
   const currentAnalysis = selectedDoc ? findings[selectedDoc] : null;
@@ -179,7 +200,7 @@ export default function Page() {
                       <p className="text-sm text-slate-600 mt-1">Type: <span className="font-medium">{currentAnalysis.documentType}</span></p>
                     </div>
                     <button onClick={exportReport} className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-medium">
-                      <Download className="w-4 h-4" /> Export
+                      <Download className="w-4 h-4" /> Export PDF
                     </button>
                   </div>
                   <div className="relative mt-4">
@@ -195,7 +216,7 @@ export default function Page() {
                   <p className="text-sm text-slate-700">{currentAnalysis.executiveSummary}</p>
                   <div className="mt-4 pt-4 border-t border-slate-100">
                     <span className="text-xs font-medium text-slate-500">Confidence: </span>
-                    <span className={`text-xs font-semibold ${currentAnalysis.confidence === 'high' ? 'text-green-600' : currentAnalysis.confidence === 'medium' ? 'text-amber-600' : 'text-red-600'}`}>{currentAnalysis.confidence.toUpperCase()}</span>
+                    <span className={`text-xs font-semibold ${currentAnalysis.confidence === 'high' ? 'text-green-600' : currentAnalysis.confidence === 'medium' ? 'text-amber-600' : 'text-red-600'}`}>{currentAnalysis.confidence?.toUpperCase()}</span>
                   </div>
                 </div>
 
@@ -207,7 +228,7 @@ export default function Page() {
                         <div key={idx} className="border-l-4 border-red-600 pl-4 py-2">
                           <div className="flex items-start justify-between mb-2">
                             <h4 className="font-semibold text-sm text-slate-900">{risk.title}</h4>
-                            <span className={`text-xs font-bold px-2 py-1 rounded ${risk.severity === 'critical' ? 'bg-red-100 text-red-800' : risk.severity === 'high' ? 'bg-orange-100 text-orange-800' : 'bg-yellow-100 text-yellow-800'}`}>{risk.severity.toUpperCase()}</span>
+                            <span className={`text-xs font-bold px-2 py-1 rounded ${risk.severity === 'critical' ? 'bg-red-100 text-red-800' : risk.severity === 'high' ? 'bg-orange-100 text-orange-800' : 'bg-yellow-100 text-yellow-800'}`}>{risk.severity?.toUpperCase()}</span>
                           </div>
                           <p className="text-sm text-slate-700 mb-2">{risk.description}</p>
                           <p className="text-xs text-slate-500 italic">Citation: {risk.citation}</p>
