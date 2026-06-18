@@ -16,7 +16,7 @@ export default function Page() {
     try {
       const base64Data = await new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onload = () => resolve((reader.result as string).split(',')[1]);
         reader.onerror = () => reject(new Error('Failed to read file'));
         reader.readAsDataURL(file);
       });
