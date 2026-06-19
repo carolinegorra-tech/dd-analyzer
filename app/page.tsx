@@ -301,12 +301,11 @@ export default function Page() {
                 <div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
                     {[
-                      { label: 'Valuation Impact', value: currentAnalysis.dealImpact?.valuation, icon: '💰', color: '#c0392b', bg: '#fdecea' },
-                      { label: 'Timeline Effect', value: currentAnalysis.dealImpact?.timeline, icon: '⏱', color: '#b7770d', bg: '#fef0e6' },
-                      { label: 'Required Conditions', value: currentAnalysis.dealImpact?.conditions, icon: '📋', color: '#1a5276', bg: '#eaf2fb' },
+                      { label: 'Valuation Impact', value: currentAnalysis.dealImpact?.valuation, color: '#c0392b', bg: '#fdecea' },
+                      { label: 'Timeline Effect', value: currentAnalysis.dealImpact?.timeline, color: '#b7770d', bg: '#fef0e6' },
+                      { label: 'Required Conditions', value: currentAnalysis.dealImpact?.conditions, color: '#1a5276', bg: '#eaf2fb' },
                     ].map((cell, i) => (
                       <div key={i} style={{ background: '#fff', borderRadius: 10, padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', border: '1px solid #ece9e2' }}>
-                        <div style={{ fontSize: 20, marginBottom: 10 }}>{cell.icon}</div>
                         <div style={{ fontSize: 10, fontFamily: 'monospace', textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#b0aa9a', marginBottom: 8 }}>{cell.label}</div>
                         <div style={{ fontSize: 14, color: '#2a2520', lineHeight: 1.6, fontWeight: 500 }}>{cell.value}</div>
                       </div>
