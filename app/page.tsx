@@ -18,6 +18,8 @@ const SEV_COLOR = { critical: '#c0392b', high: '#b7770d', medium: '#7d6b0a' };
 const SEV_BG = { critical: '#fdecea', high: '#fef0e6', medium: '#fefce6' };
 
 export default function Page() {
+  const [unlocked, setUnlocked] = useState(false);
+  const [pwInput, setPwInput] = useState('');
   const [documents, setDocuments] = useState([]);
   const [findings, setFindings] = useState({});
   const [selectedDoc, setSelectedDoc] = useState(null);
@@ -25,6 +27,33 @@ export default function Page() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('risks');
   const fileInputRef = useRef(null);
+
+  const checkPassword = () => {
+    if (pwInput === 'machado') setUnlocked(true);
+    else alert('Incorrect password');
+  };
+
+  if (!unlocked) return (
+    <div style={{ minHeight: '100vh', background: '#0f1923', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ background: '#162635', borderRadius: 12, padding: '40px 48px', width: 340, border: '1px solid #1e3a50' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
+          <div style={{ width: 32, height: 32, background: '#c0392b', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: 'white', fontWeight: 700 }}>D</div>
+          <div style={{ color: '#fff', fontWeight: 600, fontSize: 15 }}>Due Diligence AI</div>
+        </div>
+        <div style={{ fontSize: 13, color: '#5a7a8a', fontFamily: 'monospace', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 20 }}>Enter password to continue</div>
+        <input
+          type="password" value={pwInput} onChange={e => setPwInput(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') checkPassword(); }}
+          placeholder="Password"
+          style={{ width: '100%', padding: '11px 14px', borderRadius: 7, border: '1px solid #1e3a50', background: '#0f1923', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box' as const, marginBottom: 12 }}
+          autoFocus
+        />
+        <button onClick={checkPassword} style={{ width: '100%', padding: '11px', background: '#c0392b', color: '#fff', border: 'none', borderRadius: 7, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+          Continue
+        </button>
+      </div>
+    </div>
+  );
 
   const analyzeDocument = async (file) => {
     setLoading(true);
@@ -89,104 +118,75 @@ export default function Page() {
   };
 
   const currentAnalysis = selectedDoc ? findings[selectedDoc] : null;
-
   const tabs = currentAnalysis ? [
     { id: 'risks', label: 'Key Risks', count: currentAnalysis.risks?.length || 0, color: '#c0392b' },
     { id: 'flags', label: 'Red Flags', count: currentAnalysis.redFlags?.length || 0, color: '#c0392b' },
     { id: 'findings', label: 'Critical Findings', count: currentAnalysis.findings?.length || 0, color: '#b7770d' },
     { id: 'impact', label: 'Deal Impact', count: null, color: '#141c25' },
   ] : [];
-
-  const filtered = (items) => !searchTerm ? items : items?.filter(r =>
-    JSON.stringify(r).toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+  const filtered = (items) => !searchTerm ? (items || []) : (items || []).filter(r => JSON.stringify(r).toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
-
-      {/* Sidebar */}
       <div style={{ width: 268, background: '#0f1923', flexShrink: 0, display: 'flex', flexDirection: 'column', borderRight: '1px solid #1a2a35' }}>
-        {/* Logo area */}
         <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid #1a2a35' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
             <div style={{ width: 28, height: 28, background: '#c0392b', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: 'white', fontWeight: 700 }}>D</div>
-            <div style={{ color: '#ffffff', fontWeight: 600, fontSize: 14, letterSpacing: '-0.01em' }}>Due Diligence AI</div>
+            <div style={{ color: '#ffffff', fontWeight: 600, fontSize: 14 }}>Due Diligence AI</div>
           </div>
-          <div style={{ color: '#3a5a6a', fontSize: 11, fontFamily: 'monospace', letterSpacing: '0.08em', paddingLeft: 38 }}>M&A DOCUMENT REVIEW</div>
+          <div style={{ color: '#3a5a6a', fontSize: 11, fontFamily: 'monospace', textTransform: 'uppercase' as const, letterSpacing: '0.08em', paddingLeft: 38 }}>M&A Document Review</div>
         </div>
-
-        {/* Upload */}
         <div style={{ padding: '16px' }}>
-          <div
-            onDrop={handleDrop} onDragOver={(e) => e.preventDefault()} onClick={() => fileInputRef.current?.click()}
-            style={{ border: '1.5px dashed #1e3040', borderRadius: 8, padding: '16px 12px', textAlign: 'center' as const, cursor: 'pointer', background: '#0d1820', transition: 'all 0.15s' }}
+          <div onDrop={handleDrop} onDragOver={(e) => e.preventDefault()} onClick={() => fileInputRef.current?.click()}
+            style={{ border: '1.5px dashed #1e3040', borderRadius: 8, padding: '16px 12px', textAlign: 'center' as const, cursor: 'pointer', background: '#0d1820' }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = '#c0392b'; e.currentTarget.style.background = '#150d0d'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = '#1e3040'; e.currentTarget.style.background = '#0d1820'; }}
-          >
+            onMouseLeave={e => { e.currentTarget.style.borderColor = '#1e3040'; e.currentTarget.style.background = '#0d1820'; }}>
             <input ref={fileInputRef} type="file" multiple onChange={handleFileSelect} style={{ display: 'none' }} accept=".pdf,.docx,.doc,.xlsx,.xls,.txt" />
             <div style={{ color: '#c0392b', fontSize: 18, marginBottom: 5 }}>↑</div>
             <div style={{ color: '#7aabb8', fontSize: 12, fontWeight: 500 }}>Upload document</div>
             <div style={{ color: '#3a5a6a', fontSize: 10, marginTop: 3, fontFamily: 'monospace' }}>PDF · DOCX · XLSX</div>
           </div>
         </div>
-
-        {/* Document list */}
         <div style={{ flex: 1, overflowY: 'auto' as const, padding: '0 16px 16px' }}>
-          {documents.length > 0 && (
-            <div style={{ fontSize: 10, fontFamily: 'monospace', textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: '#2a4a5a', marginBottom: 8, paddingLeft: 4 }}>Exhibits</div>
-          )}
+          {documents.length > 0 && <div style={{ fontSize: 10, fontFamily: 'monospace', textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: '#2a4a5a', marginBottom: 8, paddingLeft: 4 }}>Exhibits</div>}
           {documents.length === 0 ? (
             <div style={{ color: '#2a4a5a', fontSize: 12, textAlign: 'center' as const, paddingTop: 12, fontStyle: 'italic' }}>No documents filed</div>
           ) : documents.map(doc => (
-            <div
-              key={doc.id} onClick={() => setSelectedDoc(doc.id)}
-              style={{ padding: '9px 11px', borderRadius: 7, cursor: 'pointer', marginBottom: 3, position: 'relative' as const,
-                background: selectedDoc === doc.id ? '#162635' : 'transparent',
-                border: selectedDoc === doc.id ? '1px solid #1e3a50' : '1px solid transparent',
-                transition: 'all 0.12s'
-              }}
+            <div key={doc.id} onClick={() => setSelectedDoc(doc.id)}
+              style={{ padding: '9px 11px', borderRadius: 7, cursor: 'pointer', marginBottom: 3, position: 'relative' as const, background: selectedDoc === doc.id ? '#162635' : 'transparent', border: selectedDoc === doc.id ? '1px solid #1e3a50' : '1px solid transparent' }}
               onMouseEnter={e => { if (selectedDoc !== doc.id) e.currentTarget.style.background = '#0d1820'; }}
-              onMouseLeave={e => { if (selectedDoc !== doc.id) e.currentTarget.style.background = 'transparent'; }}
-            >
+              onMouseLeave={e => { if (selectedDoc !== doc.id) e.currentTarget.style.background = 'transparent'; }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 9, paddingRight: 20 }}>
-                <div style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-                  background: doc.status === 'done' ? '#27ae70' : doc.status === 'error' ? '#e05a50' : '#f0a030',
-                  boxShadow: doc.status === 'analyzing' ? '0 0 6px #f0a030' : 'none'
-                }} />
+                <div style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: doc.status === 'done' ? '#27ae70' : doc.status === 'error' ? '#e05a50' : '#f0a030', boxShadow: doc.status === 'analyzing' ? '0 0 6px #f0a030' : 'none' }} />
                 <div style={{ minWidth: 0 }}>
                   <div style={{ color: '#c8dde8', fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{doc.name}</div>
                   <div style={{ color: '#2a4a5a', fontSize: 10, fontFamily: 'monospace', marginTop: 2 }}>{doc.date}</div>
                 </div>
               </div>
-              <button onClick={(e) => removeDocument(doc.id, e)} style={{ position: 'absolute' as const, top: 8, right: 8, background: 'none', border: 'none', color: '#2a4a5a', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: 2, transition: 'color 0.1s' }}
+              <button onClick={(e) => removeDocument(doc.id, e)} style={{ position: 'absolute' as const, top: 8, right: 8, background: 'none', border: 'none', color: '#2a4a5a', cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: 2 }}
                 onMouseEnter={e => e.currentTarget.style.color = '#e05a50'}
-                onMouseLeave={e => e.currentTarget.style.color = '#2a4a5a'}
-              >×</button>
+                onMouseLeave={e => e.currentTarget.style.color = '#2a4a5a'}>×</button>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Main */}
       <div style={{ flex: 1, background: '#f6f4ef', overflowY: 'auto' as const, display: 'flex', flexDirection: 'column' as const }}>
         {!selectedDoc ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' as const, gap: 14, color: '#999' }}>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' as const, gap: 14 }}>
             <div style={{ width: 56, height: 56, borderRadius: 16, background: '#eae7e0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>📄</div>
             <div style={{ fontSize: 17, fontWeight: 500, color: '#555' }}>No document selected</div>
             <div style={{ fontSize: 14, color: '#aaa' }}>Upload a document from the sidebar to begin</div>
           </div>
         ) : loading ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' as const, gap: 18 }}>
-            <div style={{ position: 'relative' as const, width: 44, height: 44 }}>
-              <div style={{ width: 44, height: 44, border: '3px solid #e0ddd6', borderTopColor: '#c0392b', borderRadius: '50%', animation: 'spin 0.75s linear infinite' }} />
-            </div>
+            <div style={{ width: 44, height: 44, border: '3px solid #e0ddd6', borderTopColor: '#c0392b', borderRadius: '50%', animation: 'spin 0.75s linear infinite' }} />
             <div style={{ fontSize: 14, color: '#888', fontWeight: 500 }}>Analyzing document…</div>
             <div style={{ fontSize: 12, color: '#bbb' }}>This may take 20–30 seconds</div>
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </div>
         ) : currentAnalysis ? (
           <>
-            {/* Top bar */}
             <div style={{ background: '#fff', borderBottom: '1px solid #e8e4dc', padding: '18px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
               <div>
                 <div style={{ fontSize: 10, fontFamily: 'monospace', textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: '#b0aa9a', marginBottom: 4 }}>{currentAnalysis.documentType}</div>
@@ -195,61 +195,40 @@ export default function Page() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#999' }}>CONFIDENCE</span>
-                  <span style={{ fontSize: 11, fontFamily: 'monospace', fontWeight: 700, padding: '3px 10px', borderRadius: 4,
-                    background: currentAnalysis.confidence === 'high' ? '#e4f5ec' : currentAnalysis.confidence === 'medium' ? '#fef0e6' : '#fdecea',
-                    color: currentAnalysis.confidence === 'high' ? '#1a7a40' : currentAnalysis.confidence === 'medium' ? '#b7770d' : '#c0392b'
-                  }}>{(currentAnalysis.confidence || '').toUpperCase()}</span>
+                  <span style={{ fontSize: 11, fontFamily: 'monospace', fontWeight: 700, padding: '3px 10px', borderRadius: 4, background: currentAnalysis.confidence === 'high' ? '#e4f5ec' : currentAnalysis.confidence === 'medium' ? '#fef0e6' : '#fdecea', color: currentAnalysis.confidence === 'high' ? '#1a7a40' : currentAnalysis.confidence === 'medium' ? '#b7770d' : '#c0392b' }}>{(currentAnalysis.confidence || '').toUpperCase()}</span>
                 </div>
-                <button onClick={exportReport} style={{ background: '#0f1923', color: '#fff', border: 'none', borderRadius: 7, padding: '9px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer', letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: 6, transition: 'background 0.15s' }}
+                <button onClick={exportReport} style={{ background: '#0f1923', color: '#fff', border: 'none', borderRadius: 7, padding: '9px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer', letterSpacing: '0.02em' }}
                   onMouseEnter={e => e.currentTarget.style.background = '#c0392b'}
-                  onMouseLeave={e => e.currentTarget.style.background = '#0f1923'}
-                >↓ Export PDF</button>
+                  onMouseLeave={e => e.currentTarget.style.background = '#0f1923'}>↓ Export PDF</button>
               </div>
             </div>
 
-            {/* Summary banner */}
             <div style={{ background: '#fff', borderBottom: '1px solid #e8e4dc', padding: '16px 32px', flexShrink: 0 }}>
               <div style={{ fontSize: 10, fontFamily: 'monospace', textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: '#b0aa9a', marginBottom: 8 }}>Executive Summary</div>
               <div style={{ fontSize: 14, lineHeight: 1.65, color: '#3a3530', fontFamily: 'Georgia, serif' }}>{currentAnalysis.executiveSummary}</div>
             </div>
 
-            {/* Tab bar */}
-            <div style={{ background: '#fff', borderBottom: '1px solid #e8e4dc', padding: '0 32px', display: 'flex', gap: 2, flexShrink: 0 }}>
+            <div style={{ background: '#fff', borderBottom: '1px solid #e8e4dc', padding: '0 32px', display: 'flex', gap: 2, flexShrink: 0, alignItems: 'center' }}>
               {tabs.map(tab => (
-                <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
-                  background: 'none', border: 'none', cursor: 'pointer', padding: '13px 16px 11px',
-                  fontSize: 12, fontWeight: activeTab === tab.id ? 600 : 400,
-                  color: activeTab === tab.id ? tab.color : '#888',
-                  borderBottom: activeTab === tab.id ? '2px solid ' + tab.color : '2px solid transparent',
-                  display: 'flex', alignItems: 'center', gap: 7, transition: 'all 0.12s', letterSpacing: '0.01em',
-                  marginBottom: -1
-                }}>
+                <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '13px 16px 11px', fontSize: 12, fontWeight: activeTab === tab.id ? 600 : 400, color: activeTab === tab.id ? tab.color : '#888', borderBottom: activeTab === tab.id ? '2px solid ' + tab.color : '2px solid transparent', display: 'flex', alignItems: 'center', gap: 7, marginBottom: -1, letterSpacing: '0.01em' }}>
                   {tab.label}
-                  {tab.count !== null && tab.count > 0 && (
-                    <span style={{ fontSize: 10, fontFamily: 'monospace', background: activeTab === tab.id ? tab.color : '#eae7e0', color: activeTab === tab.id ? '#fff' : '#888', padding: '1px 6px', borderRadius: 8, fontWeight: 600 }}>{tab.count}</span>
-                  )}
+                  {tab.count !== null && tab.count > 0 && <span style={{ fontSize: 10, fontFamily: 'monospace', background: activeTab === tab.id ? tab.color : '#eae7e0', color: activeTab === tab.id ? '#fff' : '#888', padding: '1px 6px', borderRadius: 8, fontWeight: 600 }}>{tab.count}</span>}
                 </button>
               ))}
-
-              {/* Search */}
-              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', padding: '8px 0' }}>
-                <input type="text" placeholder="Search…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-                  style={{ padding: '5px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 12, background: '#f9f7f4', color: '#333', width: 160, outline: 'none' }} />
+              <div style={{ marginLeft: 'auto', padding: '8px 0' }}>
+                <input type="text" placeholder="Search…" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ padding: '5px 12px', border: '1px solid #ddd', borderRadius: 6, fontSize: 12, background: '#f9f7f4', color: '#333', width: 160, outline: 'none' }} />
               </div>
             </div>
 
-            {/* Tab content */}
             <div style={{ flex: 1, padding: '28px 32px', overflowY: 'auto' as const }}>
-
               {activeTab === 'risks' && (
                 <div>
-                  {filtered(currentAnalysis.risks).length === 0 ? (
-                    <div style={{ color: '#aaa', fontSize: 14, textAlign: 'center' as const, paddingTop: 40 }}>No risks identified</div>
-                  ) : filtered(currentAnalysis.risks).map((risk, i) => (
+                  {filtered(currentAnalysis.risks).length === 0 ? <div style={{ color: '#aaa', fontSize: 14, textAlign: 'center' as const, paddingTop: 40 }}>No risks identified</div>
+                  : filtered(currentAnalysis.risks).map((risk, i) => (
                     <div key={i} style={{ background: '#fff', borderRadius: 10, padding: '18px 20px', borderLeft: '3px solid ' + (SEV_COLOR[risk.severity] || '#888'), marginBottom: 14, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                         <div style={{ fontWeight: 600, fontSize: 14, color: '#1a1612', lineHeight: 1.3 }}>{risk.title}</div>
-                        <span style={{ fontSize: 10, fontFamily: 'monospace', fontWeight: 700, padding: '3px 9px', borderRadius: 4, background: SEV_BG[risk.severity] || '#f0f0f0', color: SEV_COLOR[risk.severity] || '#888', flexShrink: 0, marginLeft: 12, letterSpacing: '0.04em' }}>{(risk.severity||'').toUpperCase()}</span>
+                        <span style={{ fontSize: 10, fontFamily: 'monospace', fontWeight: 700, padding: '3px 9px', borderRadius: 4, background: SEV_BG[risk.severity] || '#f0f0f0', color: SEV_COLOR[risk.severity] || '#888', flexShrink: 0, marginLeft: 12 }}>{(risk.severity||'').toUpperCase()}</span>
                       </div>
                       <div style={{ fontSize: 14, color: '#4a4540', lineHeight: 1.65, marginBottom: 10 }}>{risk.description}</div>
                       <div style={{ fontSize: 11, fontFamily: 'monospace', color: '#b0aa9a', fontStyle: 'italic' }}>§ {risk.citation}</div>
@@ -260,9 +239,8 @@ export default function Page() {
 
               {activeTab === 'flags' && (
                 <div>
-                  {filtered(currentAnalysis.redFlags).length === 0 ? (
-                    <div style={{ color: '#aaa', fontSize: 14, textAlign: 'center' as const, paddingTop: 40 }}>No red flags identified</div>
-                  ) : filtered(currentAnalysis.redFlags).map((flag, i) => (
+                  {filtered(currentAnalysis.redFlags).length === 0 ? <div style={{ color: '#aaa', fontSize: 14, textAlign: 'center' as const, paddingTop: 40 }}>No red flags identified</div>
+                  : filtered(currentAnalysis.redFlags).map((flag, i) => (
                     <div key={i} style={{ background: '#fff', borderRadius: 10, padding: '18px 20px', borderLeft: '3px solid #c0392b', marginBottom: 14, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                       <div style={{ fontWeight: 600, fontSize: 14, color: '#1a1612', marginBottom: 10 }}>{flag.title}</div>
                       <div style={{ fontSize: 14, color: '#4a4540', lineHeight: 1.65, marginBottom: 8 }}>{flag.description}</div>
@@ -277,12 +255,11 @@ export default function Page() {
 
               {activeTab === 'findings' && (
                 <div>
-                  {filtered(currentAnalysis.findings).length === 0 ? (
-                    <div style={{ color: '#aaa', fontSize: 14, textAlign: 'center' as const, paddingTop: 40 }}>No critical findings</div>
-                  ) : filtered(currentAnalysis.findings).map((f, i) => (
+                  {filtered(currentAnalysis.findings).length === 0 ? <div style={{ color: '#aaa', fontSize: 14, textAlign: 'center' as const, paddingTop: 40 }}>No critical findings</div>
+                  : filtered(currentAnalysis.findings).map((f, i) => (
                     <div key={i} style={{ background: '#fff', borderRadius: 10, padding: '18px 20px', borderLeft: '3px solid #b7770d', marginBottom: 14, boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                       <div style={{ fontWeight: 600, fontSize: 14, color: '#1a1612', marginBottom: 10 }}>{f.title}</div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 8 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                         <div style={{ padding: '10px 14px', background: '#fdf9f0', borderRadius: 6 }}>
                           <div style={{ fontSize: 10, fontFamily: 'monospace', textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#b7770d', marginBottom: 4 }}>Impact</div>
                           <div style={{ fontSize: 13, color: '#4a4540', lineHeight: 1.5 }}>{f.impact}</div>
@@ -311,8 +288,6 @@ export default function Page() {
                       </div>
                     ))}
                   </div>
-
-                  {/* Risk summary bar */}
                   <div style={{ background: '#fff', borderRadius: 10, padding: '20px 24px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', border: '1px solid #ece9e2' }}>
                     <div style={{ fontSize: 10, fontFamily: 'monospace', textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#b0aa9a', marginBottom: 16 }}>Risk Overview</div>
                     <div style={{ display: 'flex', gap: 24 }}>
