@@ -41,16 +41,9 @@ export default function Page() {
           <div style={{ color: '#fff', fontWeight: 600, fontSize: 15 }}>Due Diligence AI</div>
         </div>
         <div style={{ fontSize: 13, color: '#5a7a8a', fontFamily: 'monospace', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: 20 }}>Enter password to continue</div>
-        <input
-          type="password" value={pwInput} onChange={e => setPwInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') checkPassword(); }}
-          placeholder="Password"
-          style={{ width: '100%', padding: '11px 14px', borderRadius: 7, border: '1px solid #1e3a50', background: '#0f1923', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box' as const, marginBottom: 12 }}
-          autoFocus
-        />
-        <button onClick={checkPassword} style={{ width: '100%', padding: '11px', background: '#c0392b', color: '#fff', border: 'none', borderRadius: 7, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-          Continue
-        </button>
+        <input type="password" value={pwInput} onChange={e => setPwInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') checkPassword(); }} placeholder="Password"
+          style={{ width: '100%', padding: '11px 14px', borderRadius: 7, border: '1px solid #1e3a50', background: '#0f1923', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box' as const, marginBottom: 12 }} autoFocus />
+        <button onClick={checkPassword} style={{ width: '100%', padding: '11px', background: '#c0392b', color: '#fff', border: 'none', borderRadius: 7, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Continue</button>
       </div>
     </div>
   );
@@ -69,7 +62,7 @@ export default function Page() {
         reader.readAsDataURL(file);
       });
       const mimeType = getMimeType(file.name, file.type);
-      const systemPrompt = 'You are an expert M&A due diligence analyst. Analyze documents and return ONLY valid JSON (no markdown, no code blocks): {"documentType":"inferred type","executiveSummary":"2-3 sentence summary","risks":[{"title":"string","severity":"critical|high|medium","description":"string","citation":"section reference"}],"redFlags":[{"title":"string","description":"string","citation":"location","implication":"deal impact"}],"findings":[{"title":"string","impact":"quantified impact","recommendation":"action"}],"dealImpact":{"valuation":"impact","timeline":"effect","conditions":"required"},"confidence":"high|medium|low"}';
+      const systemPrompt = 'You are an expert M&A due diligence analyst. Analyze documents and return ONLY valid JSON (no markdown, no code blocks): {"documentType":"inferred type","executiveSummary":"2-3 sentence summary","projectName":"inferred project/company name or Unknown","risks":[{"title":"string","severity":"critical|high|medium","description":"string","citation":"section reference","category":"Corporate|Financial|Commercial|IP|DataPrivacy|RealEstate|Insurance|Environmental|Regulatory|Tax|Labor|Litigation|Other"}],"redFlags":[{"title":"string","description":"string","citation":"location","implication":"deal impact","category":"Corporate|Financial|Commercial|IP|DataPrivacy|RealEstate|Insurance|Environmental|Regulatory|Tax|Labor|Litigation|Other"}],"findings":[{"title":"string","impact":"quantified impact","recommendation":"action","category":"Corporate|Financial|Commercial|IP|DataPrivacy|RealEstate|Insurance|Environmental|Regulatory|Tax|Labor|Litigation|Other"}],"dealImpact":{"valuation":"impact","timeline":"effect","conditions":"required"},"confidence":"high|medium|low","scopeSummary":"1-2 sentence summary of what was reviewed","keyObservations":"2-3 overall observations about the document"}';
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -106,7 +99,227 @@ export default function Page() {
     if (selectedDoc === docId) setSelectedDoc(null);
   };
 
-  const exportReport = () => {
+  const generateFullReport = () => {
+    if (!selectedDoc || !findings[selectedDoc]) return;
+    const doc = documents.find(d => d.id === selectedDoc);
+    const a = findings[selectedDoc];
+    const date = doc.date;
+    const project = a.projectName || 'Target Company';
+
+    const categories = ['Corporate', 'Financial', 'Commercial', 'IP', 'DataPrivacy', 'RealEstate', 'Insurance', 'Environmental', 'Regulatory', 'Tax', 'Labor', 'Litigation', 'Other'];
+    const categoryLabels = { Corporate: 'Corporate', Financial: 'Financial Agreements', Commercial: 'Commercial Agreements', IP: 'Intellectual Property', DataPrivacy: 'Data Privacy', RealEstate: 'Real Estate', Insurance: 'Insurance', Environmental: 'Environmental', Regulatory: 'Regulatory', Tax: 'Tax', Labor: 'Labor', Litigation: 'Civil Litigation', Other: 'Other Matters' };
+
+    const allIssues = [
+      ...(a.risks || []).map(r => ({ ...r, type: 'risk' })),
+      ...(a.redFlags || []).map(f => ({ ...f, type: 'flag' })),
+      ...(a.findings || []).map(f => ({ ...f, type: 'finding' }))
+    ];
+
+    const byCategory = {};
+    categories.forEach(cat => {
+      byCategory[cat] = allIssues.filter(i => i.category === cat);
+    });
+
+    const sevBadge = (s) => {
+      const colors = { critical: '#c0392b', high: '#b7770d', medium: '#7d6b0a' };
+      const bgs = { critical: '#fdecea', high: '#fef0e6', medium: '#fefce6' };
+      return `<span style="display:inline-block;font-size:10px;font-family:monospace;font-weight:700;padding:2px 8px;border-radius:3px;background:${bgs[s]||'#f0f0f0'};color:${colors[s]||'#888'};text-transform:uppercase;letter-spacing:0.04em;margin-left:8px">${s||''}</span>`;
+    };
+
+    const typeLabel = (t) => t === 'risk' ? 'KEY RISK' : t === 'flag' ? 'RED FLAG' : 'FINDING';
+    const typeBg = (t) => t === 'flag' ? '#fdecea' : t === 'risk' ? '#fef5f5' : '#fdf9f0';
+
+    let categorySections = '';
+    let tocRows = '';
+    let sectionNum = 1;
+
+    categories.forEach(cat => {
+      const items = byCategory[cat];
+      if (!items || items.length === 0) return;
+      const label = categoryLabels[cat];
+      tocRows += `<tr><td style="padding:6px 12px;font-size:13px;color:#333">${sectionNum}. ${label}</td><td style="padding:6px 12px;font-size:13px;color:#999;text-align:right">${items.length} issue${items.length > 1 ? 's' : ''}</td></tr>`;
+      categorySections += `
+        <div style="margin-bottom:40px;page-break-inside:avoid">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid #0f1923">
+            <div style="width:28px;height:28px;background:#0f1923;border-radius:5px;display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:700;font-family:monospace;flex-shrink:0">${sectionNum}</div>
+            <h2 style="margin:0;font-size:16px;font-weight:700;color:#0f1923;font-family:Arial,sans-serif;letter-spacing:-0.01em">${label}</h2>
+          </div>
+          ${items.map(item => `
+            <div style="background:#fff;border-radius:8px;padding:16px 18px;border-left:3px solid ${item.type === 'flag' ? '#c0392b' : item.type === 'risk' ? '#b7770d' : '#7d6b0a'};margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.06)">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+                <div style="font-weight:600;font-size:14px;color:#1a1612;line-height:1.3;flex:1">${item.title}</div>
+                <div style="display:flex;gap:6px;flex-shrink:0;margin-left:12px">
+                  <span style="font-size:10px;font-family:monospace;padding:2px 7px;border-radius:3px;background:#e8e4dc;color:#666;font-weight:600">${typeLabel(item.type)}</span>
+                  ${item.severity ? sevBadge(item.severity) : ''}
+                </div>
+              </div>
+              <div style="font-size:13px;color:#4a4540;line-height:1.65;margin-bottom:8px">${item.description || item.impact || ''}</div>
+              ${item.implication ? `<div style="font-size:13px;color:#4a4540;padding:8px 12px;background:#fdf9f8;border-radius:5px;margin-bottom:8px"><span style="font-weight:600;color:#c0392b">Implication: </span>${item.implication}</div>` : ''}
+              ${item.recommendation ? `<div style="font-size:13px;color:#4a4540;padding:8px 12px;background:#f4f8f4;border-radius:5px;margin-bottom:8px"><span style="font-weight:600;color:#2c6e49">Recommended Action: </span>${item.recommendation}</div>` : ''}
+              ${item.citation ? `<div style="font-size:11px;font-family:monospace;color:#b0aa9a;font-style:italic;margin-top:6px">§ ${item.citation}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>`;
+      sectionNum++;
+    });
+
+    const criticalCount = allIssues.filter(i => i.severity === 'critical').length;
+    const highCount = allIssues.filter(i => i.severity === 'high').length;
+    const mediumCount = allIssues.filter(i => i.severity === 'medium').length;
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Due Diligence Report — ${project}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: Georgia, serif; margin: 0; padding: 0; background: #f6f4ef; color: #1a1612; line-height: 1.6; }
+  .page { max-width: 860px; margin: 0 auto; background: #fff; }
+  @media print {
+    body { background: #fff; }
+    .page { max-width: none; box-shadow: none; }
+    .no-print { display: none !important; }
+    .pagebreak { page-break-before: always; }
+  }
+  .print-btn { position: fixed; top: 20px; right: 20px; background: #0f1923; color: white; border: none; padding: 10px 18px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: Arial, sans-serif; z-index: 999; }
+  .print-btn:hover { background: #c0392b; }
+</style>
+</head>
+<body>
+<button class="print-btn no-print" onclick="window.print()">↓ Save as PDF</button>
+<div class="page">
+
+  <!-- Cover Page -->
+  <div style="min-height:100vh;background:#0f1923;display:flex;flex-direction:column;justify-content:space-between;padding:80px 72px;position:relative">
+    <div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:80px">
+        <div style="width:36px;height:36px;background:#c0392b;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;color:white;font-weight:700;font-family:Arial">D</div>
+        <div style="color:#5a7a8a;font-family:monospace;font-size:12px;text-transform:uppercase;letter-spacing:0.1em">Due Diligence AI</div>
+      </div>
+      <div style="color:#3a5a6a;font-family:monospace;font-size:12px;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:16px">Confidential — Attorney Work Product</div>
+      <h1 style="font-family:Arial,sans-serif;font-size:42px;font-weight:700;color:#ffffff;margin:0 0 12px;line-height:1.15;letter-spacing:-0.02em">${project}</h1>
+      <div style="font-family:Arial,sans-serif;font-size:20px;color:#7aabb8;font-weight:400;margin-bottom:48px">Due Diligence Analysis Report</div>
+      <div style="width:48px;height:3px;background:#c0392b;margin-bottom:48px"></div>
+      <div style="color:#5a7a8a;font-family:monospace;font-size:12px;line-height:2">
+        Document reviewed: ${doc.name}<br>
+        Analysis date: ${date}<br>
+        Document type: ${a.documentType || 'N/A'}<br>
+        Confidence level: ${(a.confidence || '').toUpperCase()}
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#1e3040;border-radius:8px;overflow:hidden">
+      <div style="background:#162635;padding:20px 24px">
+        <div style="font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#3a5a6a;margin-bottom:6px">Critical Issues</div>
+        <div style="font-size:28px;font-weight:700;color:#c0392b;font-family:Arial">${criticalCount}</div>
+      </div>
+      <div style="background:#162635;padding:20px 24px">
+        <div style="font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#3a5a6a;margin-bottom:6px">High Priority</div>
+        <div style="font-size:28px;font-weight:700;color:#b7770d;font-family:Arial">${highCount}</div>
+      </div>
+      <div style="background:#162635;padding:20px 24px">
+        <div style="font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#3a5a6a;margin-bottom:6px">Total Findings</div>
+        <div style="font-size:28px;font-weight:700;color:#7aabb8;font-family:Arial">${allIssues.length}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div style="padding:56px 72px">
+
+    <!-- A. Introduction -->
+    <div style="margin-bottom:48px">
+      <div style="font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#b0aa9a;margin-bottom:6px">Section A</div>
+      <h2 style="font-family:Arial,sans-serif;font-size:22px;font-weight:700;color:#0f1923;margin:0 0 20px;padding-bottom:12px;border-bottom:2px solid #0f1923">Introduction</h2>
+      <p style="font-size:15px;color:#3a3530;line-height:1.75;margin:0 0 16px">${a.executiveSummary}</p>
+      ${a.keyObservations ? `<p style="font-size:15px;color:#3a3530;line-height:1.75;margin:0">${a.keyObservations}</p>` : ''}
+    </div>
+
+    <!-- B. Scope -->
+    <div style="margin-bottom:48px">
+      <div style="font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#b0aa9a;margin-bottom:6px">Section B</div>
+      <h2 style="font-family:Arial,sans-serif;font-size:22px;font-weight:700;color:#0f1923;margin:0 0 20px;padding-bottom:12px;border-bottom:2px solid #0f1923">Scope of Works</h2>
+      <p style="font-size:15px;color:#3a3530;line-height:1.75;margin:0 0 16px">${a.scopeSummary || 'This report covers a review of the document provided, identifying key risks, red flags, and critical findings relevant to the proposed transaction.'}</p>
+      <div style="background:#f6f4ef;border-radius:8px;padding:20px 24px">
+        <div style="font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.08em;color:#b0aa9a;margin-bottom:12px">Areas Reviewed</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          ${categories.filter(cat => byCategory[cat]?.length > 0).map(cat => `<div style="font-size:13px;color:#3a3530;padding:6px 10px;background:#fff;border-radius:5px;border:1px solid #e8e4dc">${categoryLabels[cat]}</div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- C. Risk Summary Table -->
+    <div style="margin-bottom:48px">
+      <div style="font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#b0aa9a;margin-bottom:6px">Section C</div>
+      <h2 style="font-family:Arial,sans-serif;font-size:22px;font-weight:700;color:#0f1923;margin:0 0 20px;padding-bottom:12px;border-bottom:2px solid #0f1923">Summary of Findings</h2>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="background:#0f1923;color:#fff">
+            <th style="padding:10px 14px;text-align:left;font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600">Area</th>
+            <th style="padding:10px 14px;text-align:center;font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600">Issues</th>
+            <th style="padding:10px 14px;text-align:center;font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600">Critical</th>
+            <th style="padding:10px 14px;text-align:center;font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;font-weight:600">High</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${categories.filter(cat => byCategory[cat]?.length > 0).map((cat, i) => {
+            const items = byCategory[cat];
+            const crit = items.filter(x => x.severity === 'critical').length;
+            const high = items.filter(x => x.severity === 'high').length;
+            return `<tr style="background:${i % 2 === 0 ? '#fff' : '#f9f7f4'}">
+              <td style="padding:10px 14px;color:#333;border-bottom:1px solid #eee">${categoryLabels[cat]}</td>
+              <td style="padding:10px 14px;text-align:center;color:#333;border-bottom:1px solid #eee;font-family:monospace;font-weight:600">${items.length}</td>
+              <td style="padding:10px 14px;text-align:center;border-bottom:1px solid #eee">${crit > 0 ? `<span style="background:#fdecea;color:#c0392b;font-family:monospace;font-weight:700;padding:2px 8px;border-radius:3px">${crit}</span>` : '—'}</td>
+              <td style="padding:10px 14px;text-align:center;border-bottom:1px solid #eee">${high > 0 ? `<span style="background:#fef0e6;color:#b7770d;font-family:monospace;font-weight:700;padding:2px 8px;border-radius:3px">${high}</span>` : '—'}</td>
+            </tr>`;
+          }).join('')}
+          <tr style="background:#f0ede6;font-weight:600">
+            <td style="padding:10px 14px;color:#0f1923;font-family:Arial;font-size:13px">TOTAL</td>
+            <td style="padding:10px 14px;text-align:center;color:#0f1923;font-family:monospace;font-weight:700">${allIssues.length}</td>
+            <td style="padding:10px 14px;text-align:center"><span style="background:#c0392b;color:#fff;font-family:monospace;font-weight:700;padding:2px 8px;border-radius:3px">${criticalCount}</span></td>
+            <td style="padding:10px 14px;text-align:center"><span style="background:#b7770d;color:#fff;font-family:monospace;font-weight:700;padding:2px 8px;border-radius:3px">${highCount}</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- D. Deal Impact -->
+    <div style="margin-bottom:48px">
+      <div style="font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#b0aa9a;margin-bottom:6px">Section D</div>
+      <h2 style="font-family:Arial,sans-serif;font-size:22px;font-weight:700;color:#0f1923;margin:0 0 20px;padding-bottom:12px;border-bottom:2px solid #0f1923">Deal Impact Assessment</h2>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+        ${[{ label: 'Valuation Impact', value: a.dealImpact?.valuation }, { label: 'Timeline Effect', value: a.dealImpact?.timeline }, { label: 'Required Conditions', value: a.dealImpact?.conditions }].map(cell => `
+          <div style="background:#f6f4ef;border-radius:8px;padding:18px 20px;border:1px solid #e8e4dc">
+            <div style="font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#b0aa9a;margin-bottom:8px">${cell.label}</div>
+            <div style="font-size:14px;color:#1a1612;line-height:1.6;font-weight:500">${cell.value || '—'}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- E. Detailed Findings -->
+    <div style="margin-bottom:48px">
+      <div style="font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#b0aa9a;margin-bottom:6px">Section E</div>
+      <h2 style="font-family:Arial,sans-serif;font-size:22px;font-weight:700;color:#0f1923;margin:0 0 28px;padding-bottom:12px;border-bottom:2px solid #0f1923">Detailed Findings by Category</h2>
+      ${categorySections}
+    </div>
+
+    <!-- Footer -->
+    <div style="border-top:1px solid #e8e4dc;padding-top:24px;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-family:monospace;font-size:11px;color:#b0aa9a">Due Diligence AI — Confidential</div>
+      <div style="font-family:monospace;font-size:11px;color:#b0aa9a">${date}</div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>`;
+
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+  };
+
+  const exportQuickReport = () => {
     if (!selectedDoc || !findings[selectedDoc]) return;
     const doc = documents.find(d => d.id === selectedDoc);
     const a = findings[selectedDoc];
@@ -192,14 +405,17 @@ export default function Page() {
                 <div style={{ fontSize: 10, fontFamily: 'monospace', textTransform: 'uppercase' as const, letterSpacing: '0.1em', color: '#b0aa9a', marginBottom: 4 }}>{currentAnalysis.documentType}</div>
                 <div style={{ fontSize: 18, fontWeight: 600, color: '#1a1612', letterSpacing: '-0.01em' }}>{documents.find(d => d.id === selectedDoc)?.name}</div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#999' }}>CONFIDENCE</span>
                   <span style={{ fontSize: 11, fontFamily: 'monospace', fontWeight: 700, padding: '3px 10px', borderRadius: 4, background: currentAnalysis.confidence === 'high' ? '#e4f5ec' : currentAnalysis.confidence === 'medium' ? '#fef0e6' : '#fdecea', color: currentAnalysis.confidence === 'high' ? '#1a7a40' : currentAnalysis.confidence === 'medium' ? '#b7770d' : '#c0392b' }}>{(currentAnalysis.confidence || '').toUpperCase()}</span>
                 </div>
-                <button onClick={exportReport} style={{ background: '#0f1923', color: '#fff', border: 'none', borderRadius: 7, padding: '9px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer', letterSpacing: '0.02em' }}
+                <button onClick={exportQuickReport} style={{ background: '#f0ece4', color: '#555', border: 'none', borderRadius: 7, padding: '9px 14px', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#e0dcd4'}
+                  onMouseLeave={e => e.currentTarget.style.background = '#f0ece4'}>↓ Quick PDF</button>
+                <button onClick={generateFullReport} style={{ background: '#0f1923', color: '#fff', border: 'none', borderRadius: 7, padding: '9px 16px', fontSize: 12, fontWeight: 600, cursor: 'pointer', letterSpacing: '0.02em' }}
                   onMouseEnter={e => e.currentTarget.style.background = '#c0392b'}
-                  onMouseLeave={e => e.currentTarget.style.background = '#0f1923'}>↓ Export PDF</button>
+                  onMouseLeave={e => e.currentTarget.style.background = '#0f1923'}>📄 Generate Full Report</button>
               </div>
             </div>
 
@@ -278,9 +494,9 @@ export default function Page() {
                 <div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
                     {[
-                      { label: 'Valuation Impact', value: currentAnalysis.dealImpact?.valuation, color: '#c0392b', bg: '#fdecea' },
-                      { label: 'Timeline Effect', value: currentAnalysis.dealImpact?.timeline, color: '#b7770d', bg: '#fef0e6' },
-                      { label: 'Required Conditions', value: currentAnalysis.dealImpact?.conditions, color: '#1a5276', bg: '#eaf2fb' },
+                      { label: 'Valuation Impact', value: currentAnalysis.dealImpact?.valuation },
+                      { label: 'Timeline Effect', value: currentAnalysis.dealImpact?.timeline },
+                      { label: 'Required Conditions', value: currentAnalysis.dealImpact?.conditions },
                     ].map((cell, i) => (
                       <div key={i} style={{ background: '#fff', borderRadius: 10, padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.04)', border: '1px solid #ece9e2' }}>
                         <div style={{ fontSize: 10, fontFamily: 'monospace', textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: '#b0aa9a', marginBottom: 8 }}>{cell.label}</div>
